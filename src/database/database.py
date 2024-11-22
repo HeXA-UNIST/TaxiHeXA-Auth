@@ -2,6 +2,7 @@ from flask import g
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+from src.database.models import Base
 
 
 def init_db(database_uri :str):
@@ -18,5 +19,7 @@ def init_db(database_uri :str):
         if db is None:
             db = g._database = SessionLocal()
         return db
+    
+    Base.metadata.create_all(engine)
     
     return engine, get_db

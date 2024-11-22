@@ -1,6 +1,7 @@
 from flask import Flask, json, request, g, session
 
 from src.middleware.cors import cors
+from flask_mail import Mail, Message
 from src.middleware.mail import mail
 from src.database.database import init_db
 import src.database.controller as controller
@@ -50,7 +51,7 @@ def request_verify():
 
     if not email:
         return json.jsonify({"msg": "Invalid email format."}), 400
-    if email.endswith("unist@ac.kr"):
+    if not email.endswith("@unist.ac.kr"):
         return json.jsonify({"msg": "Invalid email format."}), 400
     
     # Generate OTP
@@ -81,9 +82,10 @@ def verify_email():
         controller.update_otp_is_veritied(db, auth, True)
 
     user = controller.select_user_by_email(db, email)
-    if user.is_banned:
-        return {"msg" : "엄"}, 403
+    
     if user:
+        if user.is_banned:
+            return {"msg" : "엄"}, 403
         utils.enroll_session(session, user)
         
     return json.jsonify({

@@ -2,7 +2,6 @@ from sqlalchemy import Integer, String, DateTime, Boolean
 from sqlalchemy.sql.schema import Column
 from sqlalchemy.sql.functions import current_timestamp
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.sql.schema import ForeignKey
 
 Base = declarative_base()
 
@@ -26,4 +25,4 @@ class Users(Base):
 
 
 # 데이터베이스 생성
-Base.metadata.create_all()
+# Base.metadata.create_all(engine)

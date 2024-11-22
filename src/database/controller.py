@@ -1,7 +1,5 @@
 from sqlalchemy.orm import Session
-from models import Auth, Users
-from datetime import datetime, timedelta
-import base64
+from src.database.models import Auth, Users
 
 # 1. save_otp(): OTP 저장
 def create_otp(db: Session, email: str, otp: str, is_verified:bool=False):
