@@ -1,7 +1,8 @@
 import secrets
+from datetime import timedelta, datetime
+from flask_mail import Mail, Message
+
 from src.database.models import Auth, Users
-from datetime import timedelta
-from datetime import datetime
 
 def create_safe_random_otp_code(digits:int = 6) -> str:
     otp_code = ''.join(secrets.choice('0123456789') for _ in range(digits))
@@ -25,4 +26,12 @@ def enroll_session(session, user: Users):
     session['is_authenticated'] = "True"
     session['email'] = user.email
     session['user_id'] = user.id
-    
+
+
+def send_email(mail:Mail, to:str, title:str, content:str):
+    msg = Message(
+        subject=title,
+        recipients=[to],
+        body=content
+    )
+    mail.send(msg)

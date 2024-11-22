@@ -14,6 +14,10 @@ def create_otp(db: Session, email: str, otp: str, is_verified:bool=False):
     db.commit()
     return otp
 
+def update_otp_is_veritied(db: Session, auth:Auth, is_verified:bool):
+    auth.is_verified = is_verified
+    db.commit()
+    return auth
 
 def select_otp_by_email(db: Session, email: str) -> Auth:
     auth_record = db.query(Auth).filter(Auth.email == email).order_by(Auth.created_at.desc()).first()
