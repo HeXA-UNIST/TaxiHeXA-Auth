@@ -24,9 +24,12 @@ def test_request_verify(client):
     email = "unknown@unist.ac.kr"
 
     # 이메일 형식 오류 테스트
-    invalid_email_response = client.post('/api/taxi_auth/request_verify', json={"email": "invalid-emaizskjhcbzjcghzsvl"})
+    invalid_email_response = client.post('/api/taxi_auth/request_verify', json={"email": "invalid-email"})
     assert invalid_email_response.status_code == 400
-    print("Pass invalid")
+
+    invalid_email_response = client.post('/api/taxi_auth/request_verify', json={"email": ""})
+    assert invalid_email_response.status_code == 400
+
     # 올바른 요청
     valid_email_response = client.post('/api/taxi_auth/request_verify', json={"email": email})
     assert valid_email_response.status_code == 200
@@ -45,12 +48,39 @@ def test_check_verify(client):
     # 테스트용 OTP 생성
     create_otp(db, email, otp_code)
 
-    # 유효한 OTP 테스트
+    # 성공 케이스
+
+    # 1) 기존에 존재하지 않는 이메일
     valid_response = client.post('/api/taxi_auth/check_verify', json={"email": email, "otp": otp_code})
     assert valid_response.status_code == 200
+    assert valid_response.get_json().get('registered') == False
 
-    # 잘못된 OTP 테스트
+    # 로그인이 안 되는지 확인
+    with client.session_transaction() as session:
+        assert session.get('is_authenticated') is None
+        assert session.get('email') is None
+
+    # 유저 생성
+    create_user(db, email, "nickname")
+
+    # 2) 기존에 존재하는 이메일
+    valid_response = client.post('/api/taxi_auth/check_verify', json={"email": email, "otp": otp_code})
+    assert valid_response.status_code == 200
+    assert valid_response.get_json().get('registered') == True
+
+    # 로그인 되는 지 확인
+    with client.session_transaction() as session:
+        assert session.get('is_authenticated') == 'True'
+        assert session.get('email') == email
+
+    # 실패 케이스
     invalid_response = client.post('/api/taxi_auth/check_verify', json={"email": email, "otp": "wrong-otp"})
+    assert invalid_response.status_code == 400
+
+    invalid_response = client.post('/api/taxi_auth/check_verify', json={"email": "", "otp": otp_code})
+    assert invalid_response.status_code == 400
+
+    invalid_response = client.post('/api/taxi_auth/check_verify', json={"email": email, "otp": ""})
     assert invalid_response.status_code == 400
 
 # Test 4: 닉네임 등록
@@ -59,25 +89,39 @@ def test_register_user(client):
     email = "unknown@unist.ac.kr"
     nickname = "newuser123"
 
-    # 기존 사용자로 닉네임 중복 테스트
-    create_user(db, email, "existingnickname")
-
-    duplicate_nickname_response = client.post('/api/taxi_auth/register', json={"email": "1", "nickname": "existingnickname"})
+    # invalid input format
+    duplicate_nickname_response = client.post('/api/taxi_auth/register', json={"email": "", "nickname": "nickname"})
+    assert duplicate_nickname_response.status_code == 401
+    duplicate_nickname_response = client.post('/api/taxi_auth/register', json={"email": "abs@unist.ac.kr", "nickname": ""})
     assert duplicate_nickname_response.status_code == 401
 
-    # 새로운 사용자 등록
-    valid_response = client.post('/api/taxi_auth/register', json={"email": "2", "nickname": nickname})
-    assert valid_response.status_code == 200
+    # 사용자 db에 저장
+    create_user(db, email, "existingnickname")
 
+    # 닉네임 중복 테스트
+    duplicate_nickname_response = client.post('/api/taxi_auth/register', json={"email": "1", "nickname": "existingnickname"})
+    assert duplicate_nickname_response.status_code == 401
     # 이메일 중복 테스트
     duplicate_email_response = client.post('/api/taxi_auth/register', json={"email": email, "nickname": "anothernickname"})
     assert duplicate_email_response.status_code == 401
+
+    # 새로운 사용자 등록
+    valid_response = client.post('/api/taxi_auth/register', json={"email": "rzbsys@unist.ac.kr", "nickname": nickname})
+    assert valid_response.status_code == 200
+    # 로그인 되는 지 확인
+    with client.session_transaction() as session:
+        assert session.get('is_authenticated') == 'True'
+        assert session.get('email') == "rzbsys@unist.ac.kr"
+
+    
 
 # Test 5: 로그아웃
 def test_logout(client):
     # 세션을 설정한 후 로그아웃
     with client.session_transaction() as session:
-        session['user_id'] = 1
+        session['is_authenticated'] = "True"
 
     logout_response = client.get('/api/taxi_hexa/logout')
     assert logout_response.status_code == 200
+    with client.session_transaction() as session:
+        assert session.get('is_authenticated') is None
